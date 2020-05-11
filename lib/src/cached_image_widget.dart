@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
@@ -131,6 +133,11 @@ class CachedNetworkImage extends StatefulWidget {
   ///  * [BlendMode], which includes an illustration of the effect of each blend mode.
   final BlendMode colorBlendMode;
 
+  /// If this is true, it will be available handling codec error.
+  ///
+  /// If this is true, placeholder is shown even while reading the image from disk.
+  final bool usePrecache;
+
   /// Target the interpolation quality for image scaling.
   ///
   /// If not given a value, defaults to FilterQuality.low.
@@ -160,6 +167,7 @@ class CachedNetworkImage extends StatefulWidget {
     this.filterQuality = FilterQuality.low,
     this.colorBlendMode,
     this.placeholderFadeInDuration,
+    this.usePrecache = true,
   })  : assert(imageUrl != null),
         assert(fadeOutDuration != null),
         assert(fadeOutCurve != null),
@@ -255,7 +263,24 @@ class CachedNetworkImageState extends State<CachedNetworkImage>
             f?.validTill != _fromMemory?.validTill;
       }
       return true;
+    }).asyncExpand((f) {
+      if (widget.usePrecache && f is FileInfo) {
+        return _precacheImage(f).asStream();
+      } else {
+        return Stream.value(f);
+      }
     });
+  }
+
+  Future<FileInfo> _precacheImage(FileInfo fileInfo) async {
+    final completer = Completer<FileInfo>();
+    await precacheImage(FileImage(fileInfo.file), context,
+        size: widget.width != null && widget.height != null
+            ? Size(widget.width, widget.height)
+            : null,
+        onError: completer.completeError);
+    if (!completer.isCompleted) completer.complete(fileInfo);
+    return completer.future;
   }
 
   void _disposeImageHolders() {
@@ -291,7 +316,9 @@ class CachedNetworkImageState extends State<CachedNetworkImage>
           }
           lastHolder.animationController.reverse().then((_) {
             _imageHolders.remove(lastHolder);
-            if (mounted) setState(() {});
+            final isEmpty =
+                _imageHolders.where((holder) => holder.image != null).isEmpty;
+            if (mounted && isEmpty) setState(() {});
             return null;
           });
         });

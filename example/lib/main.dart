@@ -22,6 +22,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int currentPage = 0;
+  var _downloadLargeImage = false;
 
   @override
   Widget build(BuildContext context) {
@@ -151,6 +152,38 @@ class _MyHomePageState extends State<MyHomePage> {
                 fadeOutDuration: const Duration(seconds: 1),
                 fadeInDuration: const Duration(seconds: 3),
               ),
+            ),
+            _sizedContainer(
+              CachedNetworkImage(
+                imageUrl: 'https://flutter.dev/',
+                placeholder: (context, url) =>
+                    const CircularProgressIndicator(),
+                errorWidget: (context, url, error) {
+                  return Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error),
+                      Text('$error'),
+                    ],
+                  );
+                },
+              ),
+            ),
+            _sizedContainer(
+              _downloadLargeImage
+                  ? CachedNetworkImage(
+                      imageUrl:
+                          'https://upload.wikimedia.org/wikipedia/commons/3/3f/Fronalpstock_big.jpg',
+                      placeholder: (context, url) =>
+                          const CircularProgressIndicator(),
+                      errorWidget: (context, url, error) =>
+                          const Icon(Icons.error),
+                    )
+                  : FlatButton(
+                      child: const Text('Tap to download a large image'),
+                      onPressed: () =>
+                          setState(() => _downloadLargeImage = true),
+                    ),
             ),
           ],
         ),
